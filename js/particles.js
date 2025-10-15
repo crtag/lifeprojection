@@ -50,7 +50,7 @@ export class ParticleFlowManager {
     }
 
     createConnection(pair) {
-        console.log(`Creating particle connection for pair ${pair.id}`);
+        console.log(`Creating organic tendril connection for pair ${pair.id}`);
 
         // Create path
         const path = this.createPath(
@@ -58,103 +58,144 @@ export class ParticleFlowManager {
             pair.organismB.centerPosition
         );
 
-        // Create particle geometry
-        const particleCount = this.particlesPerConnection;
-        const geometry = new THREE.BufferGeometry();
-        const positions = new Float32Array(particleCount * 3);
-        const progress = new Float32Array(particleCount);
+        // Create main tendril with branches
+        const tendrils = [];
+        const numBranches = 3;
 
-        // Initialize particles along the path
-        for (let i = 0; i < particleCount; i++) {
-            const t = i / particleCount;
-            const point = path.getPoint(t);
+        // Main tendril
+        const mainTendril = this.createTendril(path, pair.color, 0, 1.2);
+        tendrils.push(mainTendril);
 
-            positions[i * 3] = point.x;
-            positions[i * 3 + 1] = point.y;
-            positions[i * 3 + 2] = point.z;
-
-            progress[i] = t;
+        // Side branches
+        for (let i = 0; i < numBranches; i++) {
+            const branchOffset = 0.3 + (i * 0.2);
+            const branchTendril = this.createTendril(path, pair.color, branchOffset, 0.6);
+            tendrils.push(branchTendril);
         }
-
-        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-        geometry.setAttribute('progress', new THREE.BufferAttribute(progress, 1));
-
-        // Create material
-        const material = new THREE.PointsMaterial({
-            size: this.particleSize,
-            color: pair.color,
-            transparent: true,
-            opacity: 0.8,
-            blending: THREE.AdditiveBlending,
-            sizeAttenuation: true
-        });
-
-        // Create particle system
-        const particleSystem = new THREE.Points(geometry, material);
-        this.scene.add(particleSystem);
 
         // Store connection data
         this.connections.set(pair.id, {
             pair: pair,
-            particleSystem: particleSystem,
+            tendrils: tendrils,
+            particleSystem: tendrils[0].mesh, // Keep for compatibility
             path: path,
-            particleCount: particleCount,
             time: 0
         });
+    }
+
+    createTendril(path, baseColor, offset, thickness) {
+        const segments = 80;
+        const points = [];
+        const radii = [];
+
+        // Create undulating path
+        for (let i = 0; i <= segments; i++) {
+            const t = i / segments;
+            const centerPoint = path.getPoint(t);
+            const tangent = path.getTangent(t);
+
+            // Add organic wave offset
+            const waveFreq = 3 + offset * 2;
+            const waveAmp = 0.8 + offset;
+            const wave = Math.sin(t * Math.PI * waveFreq) * waveAmp;
+
+            const up = new THREE.Vector3(0, 1, 0);
+            const perpendicular = new THREE.Vector3().crossVectors(tangent, up).normalize();
+            const offsetPoint = centerPoint.clone().add(perpendicular.multiplyScalar(wave + offset * 3));
+
+            points.push(offsetPoint);
+
+            // Varying thickness along tendril
+            const thicknessVariation = Math.sin(t * Math.PI) * 0.5 + 0.5;
+            radii.push(thickness * thicknessVariation);
+        }
+
+        // Create custom tube geometry with varying radius
+        const curve = new THREE.CatmullRomCurve3(points);
+        const tubeGeometry = new THREE.TubeGeometry(curve, segments, thickness * 0.5, 8, false);
+
+        // Shader material for organic pulsing
+        const color = new THREE.Color(baseColor);
+        color.offsetHSL(offset * 0.1, 0.1, -0.1);
+
+        const material = new THREE.ShaderMaterial({
+            uniforms: {
+                time: { value: 0 },
+                color: { value: color },
+                pulseFreq: { value: 2.0 + offset },
+                offset: { value: offset }
+            },
+            vertexShader: `
+                uniform float time;
+                uniform float offset;
+                varying vec2 vUv;
+                varying vec3 vNormal;
+
+                void main() {
+                    vUv = uv;
+                    vNormal = normalize(normalMatrix * normal);
+
+                    // Undulating motion
+                    vec3 pos = position;
+                    float wave = sin(uv.x * 10.0 + time * 2.0 + offset) * 0.5;
+                    pos += normal * wave;
+
+                    gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
+                }
+            `,
+            fragmentShader: `
+                uniform float time;
+                uniform vec3 color;
+                uniform float pulseFreq;
+                varying vec2 vUv;
+                varying vec3 vNormal;
+
+                void main() {
+                    // Pulsing along length
+                    float pulse = sin(vUv.x * 5.0 - time * pulseFreq) * 0.3 + 0.7;
+
+                    // Edge highlight (Fresnel-like)
+                    vec3 viewDirection = normalize(cameraPosition - vec3(0.0));
+                    float fresnel = pow(1.0 - abs(dot(viewDirection, vNormal)), 2.0);
+
+                    // Combine effects
+                    float intensity = pulse * (0.6 + fresnel * 0.4);
+                    vec3 finalColor = color * intensity;
+                    float alpha = intensity * 0.7;
+
+                    gl_FragColor = vec4(finalColor, alpha);
+                }
+            `,
+            transparent: true,
+            blending: THREE.AdditiveBlending,
+            side: THREE.DoubleSide,
+            depthWrite: false
+        });
+
+        const mesh = new THREE.Mesh(tubeGeometry, material);
+        this.scene.add(mesh);
+
+        return {
+            mesh: mesh,
+            offset: offset
+        };
     }
 
     updateConnection(pair, deltaTime) {
         const connection = this.connections.get(pair.id);
         if (!connection) return;
 
-        // Update path if organisms moved (recalculate center positions)
-        const newPath = this.createPath(
-            pair.organismA.centerPosition,
-            pair.organismB.centerPosition
-        );
-        connection.path = newPath;
-
-        // Update particle positions
-        const positions = connection.particleSystem.geometry.attributes.position;
-        const progressAttr = connection.particleSystem.geometry.attributes.progress;
-
-        if (this.vibrationMode) {
-            // Vibration: particles stay in place but oscillate
-            for (let i = 0; i < connection.particleCount; i++) {
-                const baseProgress = i / connection.particleCount;
-                const vibration = Math.sin(connection.time * 5 + i * 0.5) * 0.02;
-                const t = baseProgress + vibration;
-
-                const point = connection.path.getPoint(Math.max(0, Math.min(1, t)));
-
-                positions.array[i * 3] = point.x;
-                positions.array[i * 3 + 1] = point.y;
-                positions.array[i * 3 + 2] = point.z;
-            }
-        } else {
-            // Flow: particles move along the path
-            for (let i = 0; i < connection.particleCount; i++) {
-                let t = progressAttr.array[i];
-                t += this.flowSpeed * deltaTime * 0.2;
-
-                if (t > 1.0) {
-                    t = 0.0; // Loop back
-                }
-
-                progressAttr.array[i] = t;
-
-                const point = connection.path.getPoint(t);
-
-                positions.array[i * 3] = point.x;
-                positions.array[i * 3 + 1] = point.y;
-                positions.array[i * 3 + 2] = point.z;
-            }
-
-            progressAttr.needsUpdate = true;
-        }
-
-        positions.needsUpdate = true;
+        // Update time
         connection.time += deltaTime;
+
+        // Update shader uniforms for each tendril
+        connection.tendrils.forEach(tendril => {
+            if (tendril.mesh.material.uniforms) {
+                tendril.mesh.material.uniforms.time.value = connection.time * this.flowSpeed;
+            }
+        });
+
+        // TODO: Update tendril geometry if organisms move
     }
 
     createPath(posA, posB) {
@@ -174,38 +215,19 @@ export class ParticleFlowManager {
     removeConnection(pairId) {
         const connection = this.connections.get(pairId);
         if (connection) {
-            this.scene.remove(connection.particleSystem);
-            connection.particleSystem.geometry.dispose();
-            connection.particleSystem.material.dispose();
+            connection.tendrils.forEach(tendril => {
+                this.scene.remove(tendril.mesh);
+                tendril.mesh.geometry.dispose();
+                tendril.mesh.material.dispose();
+            });
             this.connections.delete(pairId);
             console.log(`Removed connection ${pairId}`);
         }
     }
 
     detectIntersections() {
-        // Check if particles are near sphere center
-        this.connections.forEach(connection => {
-            const positions = connection.particleSystem.geometry.attributes.position;
-            let particlesNearCenter = 0;
-
-            for (let i = 0; i < connection.particleCount; i++) {
-                const x = positions.array[i * 3];
-                const y = positions.array[i * 3 + 1];
-                const z = positions.array[i * 3 + 2];
-
-                const distance = Math.sqrt(x * x + y * y + z * z);
-
-                if (distance < this.intersectionRadius) {
-                    particlesNearCenter++;
-                }
-            }
-
-            // Trigger intersection event if many particles are near center
-            if (particlesNearCenter > connection.particleCount * 0.3) {
-                // TODO: Spawn new organism at intersection
-                // This will be implemented when we have the spawning logic
-            }
-        });
+        // For tendril effect, intersections could be at sphere center
+        // TODO: Implement intersection detection for organic tendrils
     }
 
     setFlowSpeed(speed) {
