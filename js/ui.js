@@ -26,6 +26,7 @@ export class UIController {
             organisms: {
                 minAge: 5,
                 minSize: 5,
+                targetAngle: 180,
                 angularTolerance: 15
             },
             particles: {
@@ -100,12 +101,15 @@ export class UIController {
 
         // Organisms Folder
         const orgFolder = this.gui.addFolder('Organism Pairing');
-        orgFolder.add(this.params.organisms, 'minAge', 5, 200).step(5)
+        orgFolder.add(this.params.organisms, 'minAge', 1, 200).step(5)
             .name('Min Age (ticks)')
             .onChange(value => this.organisms.setMinAge(value));
-        orgFolder.add(this.params.organisms, 'minSize', 2, 100).step(1)
+        orgFolder.add(this.params.organisms, 'minSize', 1, 100).step(1)
             .name('Min Size (cells)')
             .onChange(value => this.organisms.setMinSize(value));
+        orgFolder.add(this.params.organisms, 'targetAngle', 0, 180).step(5)
+            .name('Target Angle (°)')
+            .onChange(value => this.organisms.setTargetAngle(value));
         orgFolder.add(this.params.organisms, 'angularTolerance', 5, 45).step(5)
             .name('Angular Tolerance (°)')
             .onChange(value => this.organisms.setAngularTolerance(value));

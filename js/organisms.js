@@ -14,7 +14,8 @@ export class OrganismTracker {
         // Settings
         this.minAge = 50;
         this.minSize = 10;
-        this.angularTolerance = 15; // degrees
+        this.targetAngle = 180; // Target angular distance in degrees
+        this.angularTolerance = 15; // Tolerance around target angle (forms a belt)
         this.updateFrequency = 5; // Update every N ticks
 
         // State
@@ -68,15 +69,17 @@ export class OrganismTracker {
             organismCells.push(tileId);
             minAge = Math.min(minAge, cell.age);
 
-            // Add neighbors to stack
-            const neighbors = this.grid.getNeighbors(tileId);
-            const tiles = this.grid.getTiles();
-            neighbors.forEach(neighbor => {
-                const neighborId = tiles.indexOf(neighbor);
-                if (neighborId >= 0 && !visited.has(neighborId)) {
-                    stack.push(neighborId);
-                }
-            });
+            // Add neighbors to stack using tile neighborIds directly
+            const tile = this.grid.getTile(tileId);
+            if (tile && tile.neighborIds) {
+                tile.neighborIds.forEach(neighborStringId => {
+                    // Convert string ID to array index using game engine's mapping
+                    const neighborIndex = this.game.tileIdToIndex?.get(neighborStringId);
+                    if (neighborIndex !== undefined && !visited.has(neighborIndex)) {
+                        stack.push(neighborIndex);
+                    }
+                });
+            }
         }
 
         // Calculate center position
@@ -118,7 +121,7 @@ export class OrganismTracker {
         // Get qualified organisms
         const qualified = this.organisms.filter(org =>
             org.age >= this.minAge 
-            // && org.size >= this.minSize
+            && org.size >= this.minSize
         );
 
         this.organisms.forEach(org => {
@@ -133,7 +136,7 @@ export class OrganismTracker {
                 const orgA = qualified[i];
                 const orgB = qualified[j];
 
-                if (this.isOpposite(orgA.centerPosition, orgB.centerPosition)) {
+                if (this.isAtAngularDistance(orgA.centerPosition, orgB.centerPosition, this.targetAngle)) {
                     this.pairs.push({
                         id: this.pairs.length,
                         organismA: orgA,
@@ -150,19 +153,19 @@ export class OrganismTracker {
         }
     }
 
-    isOpposite(pos1, pos2) {
+    isAtAngularDistance(pos1, pos2, targetAngle) {
         // Normalize vectors
         const v1 = pos1.clone().normalize();
         const v2 = pos2.clone().normalize();
 
-        // Calculate angle
+        // Calculate angular distance between the two positions
         const dot = v1.dot(v2);
         const angle = Math.acos(Math.max(-1, Math.min(1, dot))) * (180 / Math.PI);
 
-        // Check if opposite (180 degrees ± tolerance)
-        const isOpp = Math.abs(angle - 180) <= this.angularTolerance;
+        // Check if angular distance matches target angle within tolerance (forms a belt)
+        const matchesBelt = Math.abs(angle - targetAngle) <= this.angularTolerance;
 
-        return isOpp;
+        return matchesBelt;
     }
 
     generateColor(index) {
@@ -191,6 +194,10 @@ export class OrganismTracker {
 
     setMinSize(size) {
         this.minSize = size;
+    }
+
+    setTargetAngle(angle) {
+        this.targetAngle = angle;
     }
 
     setAngularTolerance(tolerance) {
