@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Life Projection - 3D Spherical Game of Life</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- Canvas Container -->
+    <div id="canvas-container">
+        <!-- Canvas will be injected here by Three.js -->
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loading">
+        <p>Loading Life Projection...</p>
+    </div>
+
+    <!-- Optional: Controls Legend (hidden by default) -->
+    <div id="controls-legend">
+        <h4>Camera Controls</h4>
+        <ul>
+            <li>Left Mouse: Rotate</li>
+            <li>Right Mouse: Pan</li>
+            <li>Scroll: Zoom</li>
+        </ul>
+    </div>
+
+    <!-- External Libraries -->
+
+    <!-- Three.js (Core) -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+
+    <!-- Three.js Addons (OrbitControls) -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/controls/OrbitControls.js"></script>
+
+    <!-- dat.GUI -->
+    <script src="https://cdn.jsdelivr.net/npm/dat.gui@0.7.9/build/dat.gui.min.js"></script>
+
+    <!-- Hexasphere.js (Local copy - needs to be downloaded) -->
+    <!-- Download from: https://github.com/arscan/hexasphere.js/ -->
+    <script src="lib/hexasphere.min.js"></script>
+
+    <!-- Application Modules -->
+    <script src="js/themes.js"></script>
+    <script src="js/scene.js"></script>
+    <script src="js/grid.js"></script>
+    <script src="js/gameoflife.js"></script>
+    <script src="js/organisms.js"></script>
+    <script src="js/particles.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>
