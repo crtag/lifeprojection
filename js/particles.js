@@ -50,7 +50,7 @@ export class ParticleFlowManager {
     }
 
     createConnection(pair) {
-        console.log(`Creating particle connection for pair ${pair.id}`);
+        console.log(`Creating orbital spiral connection for pair ${pair.id}`);
 
         // Create path
         const path = this.createPath(
@@ -58,47 +58,110 @@ export class ParticleFlowManager {
             pair.organismB.centerPosition
         );
 
-        // Create particle geometry
-        const particleCount = this.particlesPerConnection;
-        const geometry = new THREE.BufferGeometry();
-        const positions = new Float32Array(particleCount * 3);
-        const progress = new Float32Array(particleCount);
+        // Create multiple spiral strands (DNA-like)
+        const numStrands = 3;
+        const particlesPerStrand = Math.floor(this.particlesPerConnection / numStrands);
+        const strands = [];
 
-        // Initialize particles along the path
-        for (let i = 0; i < particleCount; i++) {
-            const t = i / particleCount;
-            const point = path.getPoint(t);
+        for (let strand = 0; strand < numStrands; strand++) {
+            const geometry = new THREE.BufferGeometry();
+            const positions = new Float32Array(particlesPerStrand * 3);
+            const progress = new Float32Array(particlesPerStrand);
+            const sizes = new Float32Array(particlesPerStrand);
+            const alphas = new Float32Array(particlesPerStrand);
 
-            positions[i * 3] = point.x;
-            positions[i * 3 + 1] = point.y;
-            positions[i * 3 + 2] = point.z;
+            // Offset each strand's spiral phase
+            const phaseOffset = (strand / numStrands) * Math.PI * 2;
 
-            progress[i] = t;
+            // Initialize particles with spiral offset
+            for (let i = 0; i < particlesPerStrand; i++) {
+                const t = i / particlesPerStrand;
+                const centerPoint = path.getPoint(t);
+
+                // Calculate orbital offset perpendicular to path
+                const tangent = path.getTangent(t);
+                const radius = 2.0;
+                const angle = t * Math.PI * 8 + phaseOffset; // 4 full rotations along path
+
+                // Create perpendicular vectors for spiral motion
+                const up = new THREE.Vector3(0, 1, 0);
+                const perpendicular1 = new THREE.Vector3().crossVectors(tangent, up).normalize();
+                const perpendicular2 = new THREE.Vector3().crossVectors(tangent, perpendicular1).normalize();
+
+                // Calculate spiral position
+                const offset = new THREE.Vector3()
+                    .addScaledVector(perpendicular1, Math.cos(angle) * radius)
+                    .addScaledVector(perpendicular2, Math.sin(angle) * radius);
+
+                const spiralPoint = centerPoint.clone().add(offset);
+
+                positions[i * 3] = spiralPoint.x;
+                positions[i * 3 + 1] = spiralPoint.y;
+                positions[i * 3 + 2] = spiralPoint.z;
+
+                progress[i] = t;
+                sizes[i] = 0.8 + Math.sin(t * Math.PI) * 0.4;
+                alphas[i] = 0.5 + Math.sin(t * Math.PI) * 0.5;
+            }
+
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            geometry.setAttribute('progress', new THREE.BufferAttribute(progress, 1));
+            geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+            geometry.setAttribute('alpha', new THREE.BufferAttribute(alphas, 1));
+
+            // Create material with custom shader for per-particle properties
+            const material = new THREE.ShaderMaterial({
+                uniforms: {
+                    color: { value: new THREE.Color(pair.color) },
+                    baseSize: { value: this.particleSize }
+                },
+                vertexShader: `
+                    attribute float size;
+                    attribute float alpha;
+                    varying float vAlpha;
+                    uniform float baseSize;
+
+                    void main() {
+                        vAlpha = alpha;
+                        vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+                        gl_PointSize = size * baseSize * (300.0 / -mvPosition.z);
+                        gl_Position = projectionMatrix * mvPosition;
+                    }
+                `,
+                fragmentShader: `
+                    uniform vec3 color;
+                    varying float vAlpha;
+
+                    void main() {
+                        vec2 center = gl_PointCoord - vec2(0.5);
+                        float dist = length(center);
+                        if (dist > 0.5) discard;
+
+                        float alpha = vAlpha * (1.0 - dist * 2.0);
+                        gl_FragColor = vec4(color, alpha);
+                    }
+                `,
+                transparent: true,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false
+            });
+
+            const particleSystem = new THREE.Points(geometry, material);
+            this.scene.add(particleSystem);
+
+            strands.push({
+                particleSystem: particleSystem,
+                particleCount: particlesPerStrand,
+                phaseOffset: phaseOffset
+            });
         }
-
-        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-        geometry.setAttribute('progress', new THREE.BufferAttribute(progress, 1));
-
-        // Create material
-        const material = new THREE.PointsMaterial({
-            size: this.particleSize,
-            color: pair.color,
-            transparent: true,
-            opacity: 0.8,
-            blending: THREE.AdditiveBlending,
-            sizeAttenuation: true
-        });
-
-        // Create particle system
-        const particleSystem = new THREE.Points(geometry, material);
-        this.scene.add(particleSystem);
 
         // Store connection data
         this.connections.set(pair.id, {
             pair: pair,
-            particleSystem: particleSystem,
+            strands: strands,
+            particleSystem: strands[0].particleSystem, // Keep for compatibility
             path: path,
-            particleCount: particleCount,
             time: 0
         });
     }
@@ -107,33 +170,17 @@ export class ParticleFlowManager {
         const connection = this.connections.get(pair.id);
         if (!connection) return;
 
-        // Update path if organisms moved (recalculate center positions)
-        const newPath = this.createPath(
-            pair.organismA.centerPosition,
-            pair.organismB.centerPosition
-        );
-        connection.path = newPath;
+        // Update time
+        connection.time += deltaTime;
 
-        // Update particle positions
-        const positions = connection.particleSystem.geometry.attributes.position;
-        const progressAttr = connection.particleSystem.geometry.attributes.progress;
+        // Update each spiral strand
+        connection.strands.forEach(strand => {
+            const positions = strand.particleSystem.geometry.attributes.position;
+            const progressAttr = strand.particleSystem.geometry.attributes.progress;
+            const sizes = strand.particleSystem.geometry.attributes.size;
+            const alphas = strand.particleSystem.geometry.attributes.alpha;
 
-        if (this.vibrationMode) {
-            // Vibration: particles stay in place but oscillate
-            for (let i = 0; i < connection.particleCount; i++) {
-                const baseProgress = i / connection.particleCount;
-                const vibration = Math.sin(connection.time * 5 + i * 0.5) * 0.02;
-                const t = baseProgress + vibration;
-
-                const point = connection.path.getPoint(Math.max(0, Math.min(1, t)));
-
-                positions.array[i * 3] = point.x;
-                positions.array[i * 3 + 1] = point.y;
-                positions.array[i * 3 + 2] = point.z;
-            }
-        } else {
-            // Flow: particles move along the path
-            for (let i = 0; i < connection.particleCount; i++) {
+            for (let i = 0; i < strand.particleCount; i++) {
                 let t = progressAttr.array[i];
                 t += this.flowSpeed * deltaTime * 0.2;
 
@@ -143,18 +190,40 @@ export class ParticleFlowManager {
 
                 progressAttr.array[i] = t;
 
-                const point = connection.path.getPoint(t);
+                // Get center point along path
+                const centerPoint = connection.path.getPoint(t);
 
-                positions.array[i * 3] = point.x;
-                positions.array[i * 3 + 1] = point.y;
-                positions.array[i * 3 + 2] = point.z;
+                // Calculate spiral offset
+                const tangent = connection.path.getTangent(t);
+                const radius = 2.0;
+                const angle = t * Math.PI * 8 + strand.phaseOffset + connection.time * 2.0;
+
+                // Create perpendicular vectors
+                const up = new THREE.Vector3(0, 1, 0);
+                const perpendicular1 = new THREE.Vector3().crossVectors(tangent, up).normalize();
+                const perpendicular2 = new THREE.Vector3().crossVectors(tangent, perpendicular1).normalize();
+
+                // Calculate spiral position
+                const offset = new THREE.Vector3()
+                    .addScaledVector(perpendicular1, Math.cos(angle) * radius)
+                    .addScaledVector(perpendicular2, Math.sin(angle) * radius);
+
+                const spiralPoint = centerPoint.clone().add(offset);
+
+                positions.array[i * 3] = spiralPoint.x;
+                positions.array[i * 3 + 1] = spiralPoint.y;
+                positions.array[i * 3 + 2] = spiralPoint.z;
+
+                // Update size and alpha for pulsing effect
+                sizes.array[i] = 0.8 + Math.sin(t * Math.PI + connection.time) * 0.4;
+                alphas.array[i] = 0.5 + Math.sin(t * Math.PI) * 0.5;
             }
 
+            positions.needsUpdate = true;
             progressAttr.needsUpdate = true;
-        }
-
-        positions.needsUpdate = true;
-        connection.time += deltaTime;
+            sizes.needsUpdate = true;
+            alphas.needsUpdate = true;
+        });
     }
 
     createPath(posA, posB) {
@@ -174,9 +243,11 @@ export class ParticleFlowManager {
     removeConnection(pairId) {
         const connection = this.connections.get(pairId);
         if (connection) {
-            this.scene.remove(connection.particleSystem);
-            connection.particleSystem.geometry.dispose();
-            connection.particleSystem.material.dispose();
+            connection.strands.forEach(strand => {
+                this.scene.remove(strand.particleSystem);
+                strand.particleSystem.geometry.dispose();
+                strand.particleSystem.material.dispose();
+            });
             this.connections.delete(pairId);
             console.log(`Removed connection ${pairId}`);
         }
@@ -219,7 +290,11 @@ export class ParticleFlowManager {
     setParticleSize(size) {
         this.particleSize = size;
         this.connections.forEach(connection => {
-            connection.particleSystem.material.size = size;
+            connection.strands.forEach(strand => {
+                if (strand.particleSystem.material.uniforms) {
+                    strand.particleSystem.material.uniforms.baseSize.value = size;
+                }
+            });
         });
     }
 }
