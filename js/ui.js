@@ -101,7 +101,7 @@ export class UIController {
 
         // Organisms Folder
         const orgFolder = this.gui.addFolder('Organism Pairing');
-        orgFolder.add(this.params.organisms, 'minAge', 1, 200).step(5)
+        orgFolder.add(this.params.organisms, 'minAge', 1, 200).step(1)
             .name('Min Age (ticks)')
             .onChange(value => this.organisms.setMinAge(value));
         orgFolder.add(this.params.organisms, 'minSize', 1, 100).step(1)
