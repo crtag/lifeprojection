@@ -3,7 +3,7 @@
  * Defines and manages light/dark themes
  */
 
-class ThemeManager {
+export class ThemeManager {
     constructor() {
         this.themes = {
             dark: {

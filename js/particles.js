@@ -3,7 +3,9 @@
  * Manages particle flows between paired organisms
  */
 
-class ParticleFlowManager {
+import * as THREE from 'three';
+
+export class ParticleFlowManager {
     constructor(sceneManager, organismTracker) {
         this.scene = sceneManager.getScene();
         this.organisms = organismTracker;

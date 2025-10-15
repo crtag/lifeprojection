@@ -3,7 +3,9 @@
  * Detects, tracks, and pairs living organisms
  */
 
-class OrganismTracker {
+import * as THREE from 'three';
+
+export class OrganismTracker {
     constructor(gridManager, gameEngine, sceneManager) {
         this.grid = gridManager;
         this.game = gameEngine;

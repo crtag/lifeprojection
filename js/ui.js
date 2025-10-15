@@ -3,7 +3,7 @@
  * Manages dat.GUI controls and parameter binding
  */
 
-class UIController {
+export class UIController {
     constructor(sceneManager, gridManager, gameEngine, organismTracker, particleManager, themeManager) {
         this.scene = sceneManager;
         this.grid = gridManager;

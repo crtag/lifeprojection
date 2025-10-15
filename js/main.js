@@ -3,6 +3,15 @@
  * Initializes all modules and starts the animation loop
  */
 
+import * as THREE from 'three';
+import { ThemeManager } from './themes.js';
+import { SceneManager } from './scene.js';
+import { GridManager } from './grid.js';
+import { GameOfLifeEngine } from './gameoflife.js';
+import { OrganismTracker } from './organisms.js';
+import { ParticleFlowManager } from './particles.js';
+import { UIController } from './ui.js';
+
 // Global state
 let scene, grid, gameOfLife, organisms, particles, ui, themes;
 let clock;

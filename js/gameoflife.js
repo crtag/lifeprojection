@@ -3,7 +3,9 @@
  * Implements hex-adapted Conway's Game of Life rules
  */
 
-class GameOfLifeEngine {
+import * as THREE from 'three';
+
+export class GameOfLifeEngine {
     constructor(gridManager, sceneManager) {
         this.grid = gridManager;
         this.scene = sceneManager.getScene();

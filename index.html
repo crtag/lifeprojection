@@ -29,11 +29,15 @@
 
     <!-- External Libraries -->
 
-    <!-- Three.js (Core) -->
-    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
-
-    <!-- Three.js Addons (OrbitControls) -->
-    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/controls/OrbitControls.js"></script>
+    <!-- Use ES modules approach for Three.js -->
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+        }
+    }
+</script>
 
     <!-- dat.GUI -->
     <script src="https://cdn.jsdelivr.net/npm/dat.gui@0.7.9/build/dat.gui.min.js"></script>
@@ -42,14 +46,14 @@
     <!-- Download from: https://github.com/arscan/hexasphere.js/ -->
     <script src="lib/hexasphere.min.js"></script>
 
-    <!-- Application Modules -->
-    <script src="js/themes.js"></script>
-    <script src="js/scene.js"></script>
-    <script src="js/grid.js"></script>
-    <script src="js/gameoflife.js"></script>
-    <script src="js/organisms.js"></script>
-    <script src="js/particles.js"></script>
-    <script src="js/ui.js"></script>
-    <script src="js/main.js"></script>
+    <!-- Application Modules (now as ES modules) -->
+    <script type="module" src="js/themes.js"></script>
+    <script type="module" src="js/scene.js"></script>
+    <script type="module" src="js/grid.js"></script>
+    <script type="module" src="js/gameoflife.js"></script>
+    <script type="module" src="js/organisms.js"></script>
+    <script type="module" src="js/particles.js"></script>
+    <script type="module" src="js/ui.js"></script>
+    <script type="module" src="js/main.js"></script>
 </body>
 </html>

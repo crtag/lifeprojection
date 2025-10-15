@@ -3,7 +3,9 @@
  * Manages hexagonal sphere grid using Hexasphere.js
  */
 
-class GridManager {
+import * as THREE from 'three';
+
+export class GridManager {
     constructor(sceneManager) {
         this.sceneManager = sceneManager;
         this.scene = sceneManager.getScene();

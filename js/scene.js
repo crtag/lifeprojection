@@ -3,7 +3,10 @@
  * Manages Three.js scene, camera, renderer, controls, and lighting
  */
 
-class SceneManager {
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+export class SceneManager {
     constructor(themeManager) {
         this.themeManager = themeManager;
         this.currentTheme = 'dark';
@@ -50,7 +53,7 @@ class SceneManager {
     }
 
     initControls() {
-        this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
+        this.controls = new OrbitControls(this.camera, this.renderer.domElement);
         this.controls.enableDamping = true;
         this.controls.dampingFactor = 0.05;
         this.controls.minDistance = 120;
