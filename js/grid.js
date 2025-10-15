@@ -12,7 +12,7 @@ export class GridManager {
 
         // Default parameters
         this.radius = 100;
-        this.subdivisions = 4;
+        this.subdivisions = 8;
         this.hexSize = 1.0;
         this.gridOpacity = 0.3;
 

@@ -21,11 +21,11 @@ export class UIController {
             sphere: {
                 radius: 100,
                 gridOpacity: 0.3,
-                subdivisions: 4
+                subdivisions: 16
             },
             organisms: {
-                minAge: 50,
-                minSize: 10,
+                minAge: 5,
+                minSize: 5,
                 angularTolerance: 15
             },
             particles: {
@@ -35,7 +35,7 @@ export class UIController {
             },
             visual: {
                 theme: 'dark',
-                cellOpacity: 0.7
+                cellOpacity: 0.5
             },
             seed: {
                 pattern: 'random',
@@ -90,7 +90,7 @@ export class UIController {
         sphereFolder.add(this.params.sphere, 'gridOpacity', 0.1, 1.0).step(0.1)
             .name('Grid Opacity')
             .onChange(value => this.grid.setGridOpacity(value));
-        sphereFolder.add(this.params.sphere, 'subdivisions', 2, 6).step(1)
+        sphereFolder.add(this.params.sphere, 'subdivisions', 8, 24).step(1)
             .name('Subdivisions')
             .onChange(value => {
                 this.grid.updateSubdivisions(value);
@@ -100,10 +100,10 @@ export class UIController {
 
         // Organisms Folder
         const orgFolder = this.gui.addFolder('Organism Pairing');
-        orgFolder.add(this.params.organisms, 'minAge', 10, 200).step(5)
+        orgFolder.add(this.params.organisms, 'minAge', 5, 200).step(5)
             .name('Min Age (ticks)')
             .onChange(value => this.organisms.setMinAge(value));
-        orgFolder.add(this.params.organisms, 'minSize', 5, 100).step(5)
+        orgFolder.add(this.params.organisms, 'minSize', 2, 100).step(1)
             .name('Min Size (cells)')
             .onChange(value => this.organisms.setMinSize(value));
         orgFolder.add(this.params.organisms, 'angularTolerance', 5, 45).step(5)
@@ -129,7 +129,7 @@ export class UIController {
         visualFolder.add(this.params.visual, 'theme', ['light', 'dark'])
             .name('Theme')
             .onChange(value => this.switchTheme(value));
-        visualFolder.add(this.params.visual, 'cellOpacity', 0.3, 1.0).step(0.1)
+        visualFolder.add(this.params.visual, 'cellOpacity', 0.1, 1.0).step(0.1)
             .name('Cell Opacity')
             .onChange(value => this.game.setCellOpacity(value));
         visualFolder.open();

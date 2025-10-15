@@ -117,8 +117,13 @@ export class OrganismTracker {
 
         // Get qualified organisms
         const qualified = this.organisms.filter(org =>
-            org.age >= this.minAge && org.size >= this.minSize
+            org.age >= this.minAge 
+            // && org.size >= this.minSize
         );
+
+        this.organisms.forEach(org => {
+            console.log(`Age: ${org.age}, Size: ${org.size}`);
+        });
 
         console.log(`${qualified.length} qualified organisms for pairing`);
 
