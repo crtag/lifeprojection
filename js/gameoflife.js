@@ -228,20 +228,40 @@ export class GameOfLifeEngine {
 
     createCellMesh(tileId) {
         const tile = this.grid.getTile(tileId);
-        const center = tile.centerPoint;
-
-        // Calculate appropriate cell size based on tile boundary
-        // Use distance from center to first boundary point as radius
         const boundary = tile.boundary;
-        if (boundary && boundary.length > 0) {
-            const dx = boundary[0].x - center.x;
-            const dy = boundary[0].y - center.y;
-            const dz = boundary[0].z - center.z;
-            this.cellSize = Math.sqrt(dx*dx + dy*dy + dz*dz) * 0.9; // 90% to avoid overlap
+
+        if (!boundary || boundary.length < 3) {
+            console.warn(`Tile ${tileId} has invalid boundary`);
+            return;
         }
 
-        // Create hexagon geometry (6 segments for hexagonal shape)
-        const geometry = new THREE.CircleGeometry(this.cellSize, 6);
+        // Create geometry using exact tile boundary points
+        const vertices = [];
+        const indices = [];
+
+        // Add center point (for triangle fan)
+        const center = tile.centerPoint;
+        vertices.push(center.x, center.y, center.z);
+
+        // Add boundary vertices
+        for (let i = 0; i < boundary.length; i++) {
+            vertices.push(boundary[i].x, boundary[i].y, boundary[i].z);
+        }
+
+        // Create triangle fan from center to boundary points
+        for (let i = 0; i < boundary.length; i++) {
+            indices.push(0); // center
+            indices.push(i + 1); // current boundary point
+            indices.push(((i + 1) % boundary.length) + 1); // next boundary point
+        }
+
+        // Create BufferGeometry
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+        geometry.setIndex(indices);
+        geometry.computeVertexNormals();
+
+        // Create material
         const material = new THREE.MeshPhongMaterial({
             color: 0x00ff88,
             transparent: true,
@@ -252,11 +272,6 @@ export class GameOfLifeEngine {
         });
 
         const mesh = new THREE.Mesh(geometry, material);
-
-        // Position and orient to sphere surface
-        mesh.position.set(center.x, center.y, center.z);
-        mesh.lookAt(0, 0, 0);
-
         this.scene.add(mesh);
         this.cellMeshes.set(tileId, mesh);
     }
