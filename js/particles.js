@@ -50,7 +50,7 @@ export class ParticleFlowManager {
     }
 
     createConnection(pair) {
-        console.log(`Creating particle connection for pair ${pair.id}`);
+        console.log(`Creating wormhole tunnel connection for pair ${pair.id}`);
 
         // Create path
         const path = this.createPath(
@@ -58,47 +58,97 @@ export class ParticleFlowManager {
             pair.organismB.centerPosition
         );
 
-        // Create particle geometry
-        const particleCount = this.particlesPerConnection;
-        const geometry = new THREE.BufferGeometry();
-        const positions = new Float32Array(particleCount * 3);
-        const progress = new Float32Array(particleCount);
-
-        // Initialize particles along the path
-        for (let i = 0; i < particleCount; i++) {
-            const t = i / particleCount;
-            const point = path.getPoint(t);
-
-            positions[i * 3] = point.x;
-            positions[i * 3 + 1] = point.y;
-            positions[i * 3 + 2] = point.z;
-
-            progress[i] = t;
+        // Create tube as tunnel/wormhole
+        const segments = 100;
+        const points = [];
+        for (let i = 0; i <= segments; i++) {
+            const t = i / segments;
+            points.push(path.getPoint(t));
         }
 
-        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-        geometry.setAttribute('progress', new THREE.BufferAttribute(progress, 1));
+        // Create tube geometry with hollow interior
+        const tubeGeometry = new THREE.TubeGeometry(
+            new THREE.CatmullRomCurve3(points),
+            segments,
+            1.5, // Tube radius
+            16, // Radial segments (more for smoother appearance)
+            false
+        );
 
-        // Create material
-        const material = new THREE.PointsMaterial({
-            size: this.particleSize,
-            color: pair.color,
+        // Create shader material for flowing wormhole effect
+        const material = new THREE.ShaderMaterial({
+            uniforms: {
+                time: { value: 0 },
+                color: { value: new THREE.Color(pair.color) },
+                flowSpeed: { value: 1.0 },
+                opacity: { value: 0.6 }
+            },
+            vertexShader: `
+                varying vec2 vUv;
+                varying vec3 vPosition;
+                varying vec3 vNormal;
+
+                void main() {
+                    vUv = uv;
+                    vPosition = position;
+                    vNormal = normalize(normalMatrix * normal);
+
+                    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                }
+            `,
+            fragmentShader: `
+                uniform float time;
+                uniform vec3 color;
+                uniform float flowSpeed;
+                uniform float opacity;
+                varying vec2 vUv;
+                varying vec3 vPosition;
+                varying vec3 vNormal;
+
+                void main() {
+                    // Create flowing lines pattern
+                    float flow = fract(vUv.x * 10.0 - time * flowSpeed);
+                    float lines = smoothstep(0.5, 0.55, flow) - smoothstep(0.6, 0.65, flow);
+
+                    // Create spiral pattern
+                    float spiral = sin(vUv.x * 20.0 + vUv.y * 6.28 - time * flowSpeed * 2.0);
+                    spiral = spiral * 0.5 + 0.5;
+
+                    // Edge glow (Fresnel-like effect)
+                    vec3 viewDirection = normalize(cameraPosition - vPosition);
+                    float fresnel = 1.0 - abs(dot(viewDirection, vNormal));
+                    fresnel = pow(fresnel, 2.0);
+
+                    // Combine patterns
+                    float pattern = lines * 0.7 + spiral * 0.3;
+
+                    // Create inner glow and outer edge
+                    float edgeGlow = fresnel * 1.5;
+                    float innerGlow = (1.0 - abs(vUv.y - 0.5) * 2.0) * 0.3;
+
+                    // Final color with glowing edges
+                    vec3 finalColor = color * (pattern + innerGlow + edgeGlow);
+                    float finalAlpha = (pattern * 0.3 + edgeGlow * 0.5 + innerGlow) * opacity;
+
+                    gl_FragColor = vec4(finalColor, finalAlpha);
+                }
+            `,
             transparent: true,
-            opacity: 0.8,
             blending: THREE.AdditiveBlending,
-            sizeAttenuation: true
+            side: THREE.DoubleSide,
+            depthWrite: false
         });
 
-        // Create particle system
-        const particleSystem = new THREE.Points(geometry, material);
-        this.scene.add(particleSystem);
+        // Create tunnel mesh
+        const tunnelMesh = new THREE.Mesh(tubeGeometry, material);
+        this.scene.add(tunnelMesh);
 
         // Store connection data
         this.connections.set(pair.id, {
             pair: pair,
-            particleSystem: particleSystem,
+            tunnelMesh: tunnelMesh,
+            particleSystem: tunnelMesh, // Keep for compatibility
             path: path,
-            particleCount: particleCount,
             time: 0
         });
     }
@@ -107,54 +157,17 @@ export class ParticleFlowManager {
         const connection = this.connections.get(pair.id);
         if (!connection) return;
 
-        // Update path if organisms moved (recalculate center positions)
-        const newPath = this.createPath(
-            pair.organismA.centerPosition,
-            pair.organismB.centerPosition
-        );
-        connection.path = newPath;
+        // Update time for animation
+        connection.time += deltaTime;
 
-        // Update particle positions
-        const positions = connection.particleSystem.geometry.attributes.position;
-        const progressAttr = connection.particleSystem.geometry.attributes.progress;
-
-        if (this.vibrationMode) {
-            // Vibration: particles stay in place but oscillate
-            for (let i = 0; i < connection.particleCount; i++) {
-                const baseProgress = i / connection.particleCount;
-                const vibration = Math.sin(connection.time * 5 + i * 0.5) * 0.02;
-                const t = baseProgress + vibration;
-
-                const point = connection.path.getPoint(Math.max(0, Math.min(1, t)));
-
-                positions.array[i * 3] = point.x;
-                positions.array[i * 3 + 1] = point.y;
-                positions.array[i * 3 + 2] = point.z;
-            }
-        } else {
-            // Flow: particles move along the path
-            for (let i = 0; i < connection.particleCount; i++) {
-                let t = progressAttr.array[i];
-                t += this.flowSpeed * deltaTime * 0.2;
-
-                if (t > 1.0) {
-                    t = 0.0; // Loop back
-                }
-
-                progressAttr.array[i] = t;
-
-                const point = connection.path.getPoint(t);
-
-                positions.array[i * 3] = point.x;
-                positions.array[i * 3 + 1] = point.y;
-                positions.array[i * 3 + 2] = point.z;
-            }
-
-            progressAttr.needsUpdate = true;
+        // Update shader uniforms for tunnel animation
+        if (connection.tunnelMesh && connection.tunnelMesh.material.uniforms) {
+            connection.tunnelMesh.material.uniforms.time.value = connection.time;
+            connection.tunnelMesh.material.uniforms.flowSpeed.value = this.flowSpeed;
         }
 
-        positions.needsUpdate = true;
-        connection.time += deltaTime;
+        // TODO: Update tunnel geometry if organisms move
+        // For now, tunnels stay in their original positions
     }
 
     createPath(posA, posB) {
@@ -174,38 +187,20 @@ export class ParticleFlowManager {
     removeConnection(pairId) {
         const connection = this.connections.get(pairId);
         if (connection) {
-            this.scene.remove(connection.particleSystem);
-            connection.particleSystem.geometry.dispose();
-            connection.particleSystem.material.dispose();
+            if (connection.tunnelMesh) {
+                this.scene.remove(connection.tunnelMesh);
+                connection.tunnelMesh.geometry.dispose();
+                connection.tunnelMesh.material.dispose();
+            }
             this.connections.delete(pairId);
             console.log(`Removed connection ${pairId}`);
         }
     }
 
     detectIntersections() {
-        // Check if particles are near sphere center
-        this.connections.forEach(connection => {
-            const positions = connection.particleSystem.geometry.attributes.position;
-            let particlesNearCenter = 0;
-
-            for (let i = 0; i < connection.particleCount; i++) {
-                const x = positions.array[i * 3];
-                const y = positions.array[i * 3 + 1];
-                const z = positions.array[i * 3 + 2];
-
-                const distance = Math.sqrt(x * x + y * y + z * z);
-
-                if (distance < this.intersectionRadius) {
-                    particlesNearCenter++;
-                }
-            }
-
-            // Trigger intersection event if many particles are near center
-            if (particlesNearCenter > connection.particleCount * 0.3) {
-                // TODO: Spawn new organism at intersection
-                // This will be implemented when we have the spawning logic
-            }
-        });
+        // For tunnel/wormhole effect, intersections happen at sphere center
+        // TODO: Implement intersection detection and spawning logic
+        // Could check tunnel flow intensity or position to trigger events
     }
 
     setFlowSpeed(speed) {
@@ -218,8 +213,11 @@ export class ParticleFlowManager {
 
     setParticleSize(size) {
         this.particleSize = size;
+        // For tunnel effect, size affects opacity
         this.connections.forEach(connection => {
-            connection.particleSystem.material.size = size;
+            if (connection.tunnelMesh && connection.tunnelMesh.material.uniforms) {
+                connection.tunnelMesh.material.uniforms.opacity.value = size * 0.3;
+            }
         });
     }
 }
