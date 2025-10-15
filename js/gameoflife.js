@@ -27,6 +27,30 @@ export class GameOfLifeEngine {
         // Cell meshes
         this.cellMeshes = new Map(); // tileId -> mesh
 
+        // Survival and birth rules (probability-based)
+        this.survivalRules = {
+            minNeighbors: 2,
+            maxNeighbors: 3,
+            probabilityEnabled: false,
+            probability: 1.0 // Probability of survival when neighbor count is in range
+        };
+
+        this.birthRules = {
+            minNeighbors: 2,
+            maxNeighbors: 2,
+            probabilityEnabled: false,
+            probability: 1.0 // Probability of birth when neighbor count is in range
+        };
+
+        // Death rules
+        this.deathRules = {
+            ageDeathEnabled: false,
+            ageDeathRate: 0.01, // Exponential rate parameter (lambda)
+            ageDeathThreshold: 100, // Age at which exponential death starts
+            suddenDeathEnabled: false,
+            suddenDeathProbability: 0.001 // Per-tick probability of sudden death
+        };
+
         this.initialize('random');
     }
 
@@ -143,15 +167,58 @@ export class GameOfLifeEngine {
                 neighborStats[neighborCount]++;
             }
 
-            // Hex-adapted GOL rules (balanced for hexagonal grid)
+            // Hex-adapted GOL rules with configurable probabilities
             // Hexagonal grids have 6 neighbors (vs 8 in square grids)
-            // Adjusted rules for better stability
             if (cell.alive) {
-                // Survival: 2-4 neighbors (more lenient)
-                nextAlive = neighborCount >= 2 && neighborCount <= 4;
+                // Check survival rules
+                const inSurvivalRange = neighborCount >= this.survivalRules.minNeighbors &&
+                                       neighborCount <= this.survivalRules.maxNeighbors;
+
+                if (inSurvivalRange) {
+                    // Apply survival probability if enabled
+                    if (this.survivalRules.probabilityEnabled) {
+                        nextAlive = Math.random() < this.survivalRules.probability;
+                    } else {
+                        nextAlive = true;
+                    }
+                } else {
+                    nextAlive = false;
+                }
+
+                // Apply death rules if cell would survive
+                if (nextAlive) {
+                    // Check sudden death rule
+                    if (this.deathRules.suddenDeathEnabled) {
+                        if (Math.random() < this.deathRules.suddenDeathProbability) {
+                            nextAlive = false;
+                        }
+                    }
+
+                    // Check age-based death rule (exponential probability)
+                    if (nextAlive && this.deathRules.ageDeathEnabled && cell.age >= this.deathRules.ageDeathThreshold) {
+                        const ageOverThreshold = cell.age - this.deathRules.ageDeathThreshold;
+                        // Exponential probability: P(death) = 1 - e^(-lambda * age)
+                        const deathProbability = 1 - Math.exp(-this.deathRules.ageDeathRate * ageOverThreshold);
+                        if (Math.random() < deathProbability) {
+                            nextAlive = false;
+                        }
+                    }
+                }
             } else {
-                // Birth: 2-3 neighbors (allows growth)
-                nextAlive = neighborCount === 2 || neighborCount === 3;
+                // Check birth rules
+                const inBirthRange = neighborCount >= this.birthRules.minNeighbors &&
+                                    neighborCount <= this.birthRules.maxNeighbors;
+
+                if (inBirthRange) {
+                    // Apply birth probability if enabled
+                    if (this.birthRules.probabilityEnabled) {
+                        nextAlive = Math.random() < this.birthRules.probability;
+                    } else {
+                        nextAlive = true;
+                    }
+                } else {
+                    nextAlive = false;
+                }
             }
 
             nextStates.push(nextAlive);
@@ -332,5 +399,73 @@ export class GameOfLifeEngine {
 
     getTickCount() {
         return this.tickCount;
+    }
+
+    // Survival rule setters
+    setSurvivalMinNeighbors(min) {
+        this.survivalRules.minNeighbors = min;
+    }
+
+    setSurvivalMaxNeighbors(max) {
+        this.survivalRules.maxNeighbors = max;
+    }
+
+    setSurvivalProbabilityEnabled(enabled) {
+        this.survivalRules.probabilityEnabled = enabled;
+    }
+
+    setSurvivalProbability(probability) {
+        this.survivalRules.probability = probability;
+    }
+
+    // Birth rule setters
+    setBirthMinNeighbors(min) {
+        this.birthRules.minNeighbors = min;
+    }
+
+    setBirthMaxNeighbors(max) {
+        this.birthRules.maxNeighbors = max;
+    }
+
+    setBirthProbabilityEnabled(enabled) {
+        this.birthRules.probabilityEnabled = enabled;
+    }
+
+    setBirthProbability(probability) {
+        this.birthRules.probability = probability;
+    }
+
+    // Death rule setters
+    setAgeDeathEnabled(enabled) {
+        this.deathRules.ageDeathEnabled = enabled;
+    }
+
+    setAgeDeathRate(rate) {
+        this.deathRules.ageDeathRate = rate;
+    }
+
+    setAgeDeathThreshold(threshold) {
+        this.deathRules.ageDeathThreshold = threshold;
+    }
+
+    setSuddenDeathEnabled(enabled) {
+        this.deathRules.suddenDeathEnabled = enabled;
+    }
+
+    setSuddenDeathProbability(probability) {
+        this.deathRules.suddenDeathProbability = probability;
+    }
+
+    // Rule getters
+    getSurvivalRules() {
+        return this.survivalRules;
+    }
+
+    getBirthRules() {
+        return this.birthRules;
+    }
+
+    getDeathRules() {
+        return this.deathRules;
     }
 }

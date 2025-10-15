@@ -48,30 +48,91 @@ canvas {
     display: none;
 }
 
-/* Optional: Controls legend */
-#controls-legend {
+/* Stats and Legend Panel */
+#stats-panel {
     position: absolute;
-    bottom: 20px;
+    top: 20px;
     left: 20px;
-    background: rgba(0, 0, 0, 0.7);
+    background: rgba(0, 0, 0, 0.85);
     color: white;
-    padding: 15px;
-    border-radius: 5px;
-    font-size: 12px;
-    font-family: monospace;
+    padding: 20px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     z-index: 100;
-    display: none; /* Hidden by default, can be toggled */
+    min-width: 220px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(5px);
 }
 
-#controls-legend h4 {
-    margin-bottom: 8px;
+#stats-panel h3 {
+    margin: 0 0 15px 0;
+    font-size: 18px;
+    font-weight: 600;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+    padding-bottom: 8px;
+}
+
+#stats-panel h4 {
+    margin: 12px 0 8px 0;
     font-size: 14px;
+    font-weight: 600;
+    color: #aaa;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
-#controls-legend ul {
-    list-style: none;
+.stats-section {
+    margin-bottom: 15px;
 }
 
-#controls-legend li {
-    margin: 4px 0;
+.stats-section:last-child {
+    margin-bottom: 0;
+}
+
+.stat-row,
+.legend-row,
+.rule-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 6px 0;
+    padding: 4px 0;
+}
+
+.stat-label,
+.rule-label {
+    color: #bbb;
+    font-size: 12px;
+}
+
+.stat-value {
+    font-weight: 600;
+    font-size: 14px;
+    color: #0f0;
+    font-family: 'Courier New', monospace;
+}
+
+.rule-value {
+    font-size: 12px;
+    color: #fff;
+}
+
+.legend-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.color-box {
+    width: 20px;
+    height: 20px;
+    border-radius: 3px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    flex-shrink: 0;
+}
+
+.legend-label {
+    font-size: 12px;
+    color: #ddd;
 }

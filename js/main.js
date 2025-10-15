@@ -11,9 +11,10 @@ import { GameOfLifeEngine } from './gameoflife.js';
 import { OrganismTracker } from './organisms.js';
 import { ParticleFlowManager } from './particles.js';
 import { UIController } from './ui.js';
+import { StatsDisplay } from './stats.js';
 
 // Global state
-let scene, grid, gameOfLife, organisms, particles, ui, themes;
+let scene, grid, gameOfLife, organisms, particles, ui, themes, stats;
 let clock;
 let animationId;
 
@@ -34,6 +35,7 @@ async function init() {
         gameOfLife = new GameOfLifeEngine(grid, scene);
         organisms = new OrganismTracker(grid, gameOfLife, scene);
         particles = new ParticleFlowManager(scene, organisms);
+        stats = new StatsDisplay(gameOfLife);
         ui = new UIController(scene, grid, gameOfLife, organisms, particles, themes);
 
         // Hide loading screen
@@ -73,6 +75,9 @@ function animate() {
 
     // Update particles (runs every frame)
     particles.update(deltaTime);
+
+    // Update stats display
+    stats.update();
 
     // Render
     scene.render();

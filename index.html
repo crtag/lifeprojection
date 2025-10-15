@@ -17,14 +17,69 @@
         <p>Loading Life Projection...</p>
     </div>
 
-    <!-- Optional: Controls Legend (hidden by default) -->
-    <div id="controls-legend">
-        <h4>Camera Controls</h4>
-        <ul>
-            <li>Left Mouse: Rotate</li>
-            <li>Right Mouse: Pan</li>
-            <li>Scroll: Zoom</li>
-        </ul>
+    <!-- Stats and Legend Panel -->
+    <div id="stats-panel">
+        <h3>Life Projection</h3>
+
+        <div class="stats-section">
+            <h4>Population</h4>
+            <div class="stat-row">
+                <span class="stat-label">Alive:</span>
+                <span id="stat-alive" class="stat-value">0</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Total:</span>
+                <span id="stat-total" class="stat-value">0</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Density:</span>
+                <span id="stat-density" class="stat-value">0%</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Tick:</span>
+                <span id="stat-tick" class="stat-value">0</span>
+            </div>
+        </div>
+
+        <div class="stats-section">
+            <h4>Cell Colors</h4>
+            <div class="legend-row">
+                <span class="color-box" style="background-color: #00ff88;"></span>
+                <span class="legend-label">Young (0-10 ticks)</span>
+            </div>
+            <div class="legend-row">
+                <span class="color-box" style="background-color: #ffaa00;"></span>
+                <span class="legend-label">Mature (11-50 ticks)</span>
+            </div>
+            <div class="legend-row">
+                <span class="color-box" style="background-color: #8888ff;"></span>
+                <span class="legend-label">Old (51+ ticks)</span>
+            </div>
+        </div>
+
+        <div class="stats-section">
+            <h4>Current Rules</h4>
+            <div class="rule-row">
+                <span class="rule-label">Survival:</span>
+                <span id="rule-survival" class="rule-value">2-3 neighbors</span>
+            </div>
+            <div class="rule-row">
+                <span class="rule-label">Birth:</span>
+                <span id="rule-birth" class="rule-value">2 neighbors</span>
+            </div>
+        </div>
+
+        <div class="stats-section">
+            <h4>Death Rules</h4>
+            <div class="rule-row">
+                <span class="rule-label">Age Death:</span>
+                <span id="rule-age-death" class="rule-value">Disabled</span>
+            </div>
+            <div class="rule-row">
+                <span class="rule-label">Sudden Death:</span>
+                <span id="rule-sudden-death" class="rule-value">Disabled</span>
+            </div>
+        </div>
     </div>
 
     <!-- External Libraries -->
@@ -53,6 +108,7 @@
     <script type="module" src="js/gameoflife.js"></script>
     <script type="module" src="js/organisms.js"></script>
     <script type="module" src="js/particles.js"></script>
+    <script type="module" src="js/stats.js"></script>
     <script type="module" src="js/ui.js"></script>
     <script type="module" src="js/main.js"></script>
 </body>

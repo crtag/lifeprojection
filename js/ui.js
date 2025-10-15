@@ -41,6 +41,25 @@ export class UIController {
                 pattern: 'random',
                 density: 0.2,
                 regenerate: () => this.regenerateSeed()
+            },
+            survivalRules: {
+                minNeighbors: 2,
+                maxNeighbors: 3,
+                probabilityEnabled: false,
+                probability: 1.0
+            },
+            birthRules: {
+                minNeighbors: 2,
+                maxNeighbors: 2,
+                probabilityEnabled: false,
+                probability: 1.0
+            },
+            deathRules: {
+                ageDeathEnabled: false,
+                ageDeathRate: 0.01,
+                ageDeathThreshold: 100,
+                suddenDeathEnabled: false,
+                suddenDeathProbability: 0.001
             }
         };
 
@@ -124,6 +143,62 @@ export class UIController {
         seedFolder.add(this.params.seed, 'regenerate')
             .name('Regenerate');
         seedFolder.open();
+
+        // Survival Rules Folder
+        const survivalRulesFolder = this.gui.addFolder('Survival Rules');
+        survivalRulesFolder.add(this.params.survivalRules, 'minNeighbors', 0, 6).step(1)
+            .name('Min Neighbors')
+            .onChange(value => this.game.setSurvivalMinNeighbors(value));
+        survivalRulesFolder.add(this.params.survivalRules, 'maxNeighbors', 0, 6).step(1)
+            .name('Max Neighbors')
+            .onChange(value => this.game.setSurvivalMaxNeighbors(value));
+        survivalRulesFolder.add(this.params.survivalRules, 'probabilityEnabled')
+            .name('Probability Enabled')
+            .onChange(value => this.game.setSurvivalProbabilityEnabled(value));
+        survivalRulesFolder.add(this.params.survivalRules, 'probability', 0.01, 1.0).step(0.01)
+            .name('Survival Probability')
+            .onChange(value => this.game.setSurvivalProbability(value));
+        survivalRulesFolder.open();
+
+        // Birth Rules Folder
+        const birthRulesFolder = this.gui.addFolder('Birth Rules');
+        birthRulesFolder.add(this.params.birthRules, 'minNeighbors', 0, 6).step(1)
+            .name('Min Neighbors')
+            .onChange(value => this.game.setBirthMinNeighbors(value));
+        birthRulesFolder.add(this.params.birthRules, 'maxNeighbors', 0, 6).step(1)
+            .name('Max Neighbors')
+            .onChange(value => this.game.setBirthMaxNeighbors(value));
+        birthRulesFolder.add(this.params.birthRules, 'probabilityEnabled')
+            .name('Probability Enabled')
+            .onChange(value => this.game.setBirthProbabilityEnabled(value));
+        birthRulesFolder.add(this.params.birthRules, 'probability', 0.01, 1.0).step(0.01)
+            .name('Birth Probability')
+            .onChange(value => this.game.setBirthProbability(value));
+        birthRulesFolder.open();
+
+        // Death Rules Folder
+        const deathRulesFolder = this.gui.addFolder('Death Rules');
+
+        // Age-based death
+        deathRulesFolder.add(this.params.deathRules, 'ageDeathEnabled')
+            .name('Age Death Enabled')
+            .onChange(value => this.game.setAgeDeathEnabled(value));
+        deathRulesFolder.add(this.params.deathRules, 'ageDeathThreshold', 50, 500).step(10)
+            .name('Age Death Threshold')
+            .onChange(value => this.game.setAgeDeathThreshold(value));
+        deathRulesFolder.add(this.params.deathRules, 'ageDeathRate', 0.001, 0.1).step(0.001)
+            .name('Age Death Rate (λ)')
+            .onChange(value => this.game.setAgeDeathRate(value));
+
+        // Sudden death
+        deathRulesFolder.add(this.params.deathRules, 'suddenDeathEnabled')
+            .name('Sudden Death Enabled')
+            .onChange(value => this.game.setSuddenDeathEnabled(value));
+        deathRulesFolder.add(this.params.deathRules, 'suddenDeathProbability', 0.0001, 0.01).step(0.0001)
+            .name('Sudden Death Prob.')
+            .onChange(value => this.game.setSuddenDeathProbability(value));
+
+        deathRulesFolder.open();
     }
 
     switchTheme(themeName) {
